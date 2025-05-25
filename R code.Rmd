@@ -1,0 +1,171 @@
+---
+title: "china 2023 marriage data"
+author: "Jiayu"
+date: "2025-04-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+library(tidyverse)
+library(tidylog)
+library(janitor)
+library(lubridate)
+library(gtsummary)
+
+library(ggthemes)
+library(cowplot)
+
+library(scales)
+library(RColorBrewer)
+
+library(patchwork)
+library(ggtext)
+library(geofacet)
+
+library(glue)
+library(stringr)
+library(showtext)
+
+library(pinyin)
+```
+```{r}
+library(openxlsx)
+```
+```{r}
+marriage_data <- read.xlsx("china marriage data.xlsx")
+```
+```{r}
+marriage_data <- marriage_data |>
+  arrange(region)
+```
+```{r}
+missing_in_grid <- setdiff(unique(marriage_data$region), china_prov_grid2$name)
+print(unique(marriage_data$region))
+```
+```{r}
+names_grid <- unique(as.character(china_prov_grid2$name)) |>
+  sort()
+print(names_grid)
+
+```
+```{r}
+marriage_data$region <- recode(marriage_data$region,
+                               "Anhui  " = "Anhui",
+                               "Beijing  " = "Beijing" ,     
+                               "Chongqing  "="Chongqing",
+                               "Fujian  " =  "Fujian",   
+                               "Gansu  " = "Gansu",       
+                               "Guangdong  " = "Guangdong",  
+                               "Guangxi  "  = "Guangxi",   
+                               "Guizhou  "  =   "Guizhou",  
+                               "Hainan  " = "Hainan",     
+                               "Hebei  " = "Hebei",      
+                               "Heilongjiang  " = "Heilongjiang", 
+                               "Henan  "  = "Henan", 
+                               "Hubei  " =  "Hubei",      
+                               "Hunan  "  = "Hunan" ,      
+                               "Jiangsu  " = "Jiangsu",     
+                               "Jiangxi  " =  "Jiangxi",    
+                               "Jilin  "   = "Jilin",     
+                               "Liaoning  "  = "Liaoning", 
+                               "Nei Menggu  " =  "Inner Mongolia", 
+                               "Ningxia  "  =  "Ningxia",   
+                               "Qinghai  "   = "Qinghai",  
+                               "Shaanxi  " =  "Shaanxi",    
+                               "Shandong  " = "Shandong",    
+                               "Shanghai  " = "Shanghai",   
+                               "Shanxi  "  = "Shanxi",     
+                               "Sichuan  " = "Sichuan",     
+                               "Tianjin  " = "Tianjin",     
+                               "Xinjiang"  = "Xinjiang",     
+                               "Xizang  "  = "Tibet",     
+                               "Yunnan  "  = "Yunnan",    
+                               "Zhejiang  " = "Zhejiang")
+```
+```{r}
+custom_grid <- as.data.frame(china_prov_grid2)
+custom_grid <- custom_grid[custom_grid$name %in% unique(marriage_data$region), ]
+
+print(custom_grid)
+```
+```{r}
+marriage_data <- marriage_data |>
+  pivot_longer(cols = -region,
+               names_to = "year",
+               values_to = "marriage") |>
+  mutate(year = as.numeric(year)) |>
+  mutate(region = as.factor(region))
+
+marriage_data
+```
+```{r}
+marriage_scaled <- marriage_data |>
+  group_by(region) |>
+  mutate(scaled = round((marriage - min(marriage))/(max(marriage) - min(marriage)),3)) |>
+  ungroup()
+
+marriage_scaled
+```
+
+
+```{r}
+marriage_scaled$region_color <- ifelse(marriage_scaled$region== "Zhejiang", "Zhejiang", "Other")
+```
+```{r}
+marriage_plot <-
+  ggplot(data = marriage_scaled, aes(x=year, y=scaled, group = region, fill = region_color, color = region_color)) +
+  geom_line(size=0.5) +
+  geom_area(aes(ymin = 0, ymax = scaled), alpha = 0.7, position = "identity") +
+  scale_fill_manual(
+    values = c("Zhejiang"="#804D75", "Other"="#BA87AF"), guide = "none") +
+  scale_color_manual(
+    values = c("Zhejiang"="#804D75", "Other"="#BA87AF"), guide = "none") +
+  facet_geo(~region, grid = custom_grid) +
+  theme_void() +
+  theme(
+    panel.background = element_rect(fill = "#F8F4F9", color = "#F8F4F9"),
+    strip.text = element_text(size=10, margin = margin(5,0,5,0), color="#685369"),
+    axis.text.x = element_text(size=8, margin = margin(5,0,5,0), color = "#685369"),
+    plot.margin = margin(20,20,20,20),
+    axis.text.y = element_blank())
+
+print(marriage_plot)
+```
+```{r}
+ggsave("china marriage data.pdf", height = 9, width = 10, dpi = 800)
+```
+
+
+
+
+
+
+
+
+
+
+
+
